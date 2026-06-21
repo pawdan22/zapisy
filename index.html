@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Zapisy na egzamin wewnętrzny — vMPK</title>
+  <title>Zapisy na egzamin — vMPK</title>
 
   <style>
     body {
@@ -56,6 +56,17 @@
       padding: 16px 20px;
       margin-bottom: 30px;
       line-height: 1.6;
+    }
+
+    .warning-box {
+      display: none;
+      background: #fff7ed;
+      border-left: 5px solid #f97316;
+      padding: 16px 20px;
+      margin-bottom: 25px;
+      color: #7c2d12;
+      line-height: 1.6;
+      font-weight: 600;
     }
 
     label {
@@ -153,14 +164,20 @@
 
   <main class="page">
     <section class="header">
-      <h1>Zapisy na egzamin wewnętrzny</h1>
+      <h1>Zapisy na egzamin</h1>
       <p>Formularz zgłoszeniowy dla kandydatów na kierowcę vMPK Drobin.</p>
     </section>
 
     <div class="info-box">
       <strong>Informacja:</strong><br>
-      Wypełnij formularz, wpisując swój nick z Roblox oraz wybierając dostępną datę egzaminu.
-      Po wysłaniu zgłoszenie zostanie przekazane do administracji vMPK. Jeśli nie stawisz się na wybranej dacie egzaminu zostajesz zwolniony dyscyplinarnie.
+      Wypełnij formularz, wpisując swój nick z Roblox, wybierając typ egzaminu oraz dostępny termin.
+      Po wysłaniu zgłoszenie zostanie przekazane do administracji vMPK.
+      Jeśli nie stawisz się na wybranej dacie egzaminu, zostajesz zwolniony dyscyplinarnie.
+    </div>
+
+    <div id="internalWarning" class="warning-box">
+      Egzamin wewnętrzny dostępny jest tylko dla osób, które ukończyły egzamin państwowy.
+      Kontynuując zapis, potwierdzasz, że spełniasz ten warunek.
     </div>
 
     <form id="examForm">
@@ -174,10 +191,16 @@
         required
       />
 
+      <label for="examType">Typ egzaminu</label>
+      <select id="examType" required>
+        <option value="">Wybierz typ egzaminu</option>
+        <option value="Egzamin wewnętrzny">Egzamin wewnętrzny</option>
+        <option value="Egzamin państwowy">Egzamin państwowy</option>
+      </select>
+
       <label for="date">Dostępny termin egzaminu</label>
-      <select id="date" required>
-        <option value="">Wybierz termin</option>
-        <option value="21.06.2026 16:00">21.06.2026 — godz. 16:00</option>
+      <select id="date" required disabled>
+        <option value="">Najpierw wybierz typ egzaminu</option>
       </select>
 
       <button type="submit" id="submitBtn">Wyślij zgłoszenie</button>
@@ -186,8 +209,8 @@
     </form>
 
     <div class="footer">
-      Dokument elektroniczny — UrbanMove MPK Drobin<br>
-      Formularz przeznaczony wyłącznie do zapisów na egzamin wewnętrzny.
+      Dokument elektroniczny — vMPK Drobin<br>
+      Formularz przeznaczony do zapisów na egzaminy kierowców.
     </div>
   </main>
 
@@ -197,14 +220,60 @@
     const form = document.getElementById("examForm");
     const statusBox = document.getElementById("status");
     const submitBtn = document.getElementById("submitBtn");
+    const examType = document.getElementById("examType");
+    const dateSelect = document.getElementById("date");
+    const internalWarning = document.getElementById("internalWarning");
+
+    examType.addEventListener("change", function() {
+      dateSelect.innerHTML = "";
+      statusBox.style.display = "none";
+
+      if (examType.value === "") {
+        dateSelect.disabled = true;
+        dateSelect.innerHTML = '<option value="">Najpierw wybierz typ egzaminu</option>';
+        internalWarning.style.display = "none";
+        return;
+      }
+
+      dateSelect.disabled = false;
+
+      if (examType.value === "Egzamin wewnętrzny") {
+        const confirmInternal = confirm(
+          "Egzamin wewnętrzny dostępny jest tylko dla tych, którzy ukończyli egzamin państwowy. Czy chcesz kontynuować?"
+        );
+
+        if (!confirmInternal) {
+          examType.value = "";
+          dateSelect.disabled = true;
+          dateSelect.innerHTML = '<option value="">Najpierw wybierz typ egzaminu</option>';
+          internalWarning.style.display = "none";
+          return;
+        }
+
+        internalWarning.style.display = "block";
+        dateSelect.innerHTML = `
+          <option value="">Wybierz termin</option>
+          <option value="21.06.2026 16:00">21.06.2026 — godz. 16:00</option>
+        `;
+      }
+
+      if (examType.value === "Egzamin państwowy") {
+        internalWarning.style.display = "none";
+        dateSelect.innerHTML = `
+          <option value="">Wybierz termin</option>
+          <option value="21.06.2026 17:30">21.06.2026 — godz. 17:30</option>
+        `;
+      }
+    });
 
     form.addEventListener("submit", async function(e) {
       e.preventDefault();
 
       const nick = document.getElementById("nick").value.trim();
-      const date = document.getElementById("date").value;
+      const type = examType.value;
+      const date = dateSelect.value;
 
-      if (!nick || !date) {
+      if (!nick || !type || !date) {
         showStatus("Uzupełnij wszystkie pola formularza.", "error");
         return;
       }
@@ -216,12 +285,17 @@
         username: "Zapisy Egzaminacyjne",
         embeds: [
           {
-            title: "Nowe zgłoszenie na egzamin wewnętrzny",
+            title: "Nowe zgłoszenie na egzamin",
             color: 2063993,
             fields: [
               {
                 name: "Nick Roblox",
                 value: nick,
+                inline: false
+              },
+              {
+                name: "Typ egzaminu",
+                value: type,
                 inline: false
               },
               {
@@ -231,12 +305,12 @@
               },
               {
                 name: "Projekt",
-                value: "UrbanMove MPK Drobin",
+                value: "vMPK Drobin",
                 inline: false
               }
             ],
             footer: {
-              text: "System zapisów UrbanMove MPK Drobin"
+              text: "System zapisów vMPK Drobin"
             },
             timestamp: new Date().toISOString()
           }
@@ -255,6 +329,9 @@
         if (response.ok) {
           showStatus("Zgłoszenie zostało wysłane pomyślnie.", "success");
           form.reset();
+          dateSelect.disabled = true;
+          dateSelect.innerHTML = '<option value="">Najpierw wybierz typ egzaminu</option>';
+          internalWarning.style.display = "none";
         } else {
           showStatus("Wystąpił błąd podczas wysyłania zgłoszenia.", "error");
         }
